@@ -947,8 +947,100 @@
 
 <footer>
   <b>CHARACTER ENGINE</b> &mdash; an original-cast forge for an open-world game concept.<br>
-  Static site &middot; no accounts &middot; no credits &middot; your library never leaves this browser.
+  Static site &middot; no accounts &middot; no credits &middot; your library never leaves this browser.<br>
+  <button id="curateBtn" class="curate-btn">Curate</button>
+  <span id="curateBar" class="curate-bar" hidden>
+    <button id="restoreBtn">Restore all</button>
+    <button id="downloadBtn">Download updated page</button>
+    <button id="doneBtn">Done</button>
+  </span>
 </footer>
+
+<script>
+/* Curator mode: hide any card, persist the choice, export a clean page. */
+(function(){
+  const KEY = 'ce-hidden-images';
+  const getHidden = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e){ return []; } };
+  const setHidden = (arr) => { try { localStorage.setItem(KEY, JSON.stringify(arr)); } catch(e){} };
+  const curateBtn = document.getElementById('curateBtn');
+  const curateBar = document.getElementById('curateBar');
+  let active = false;
+
+  function applyHidden(){
+    const hidden = getHidden();
+    document.querySelectorAll('.card').forEach(card => {
+      const img = card.querySelector('img');
+      if (img && hidden.includes(img.getAttribute('src'))) card.remove();
+    });
+  }
+
+  function enter(){
+    active = true;
+    curateBtn.hidden = true;
+    curateBar.hidden = false;
+    document.body.classList.add('curating');
+    document.querySelectorAll('.card').forEach(card => {
+      if (card.querySelector('.del-btn')) return;
+      const btn = document.createElement('button');
+      btn.className = 'del-btn';
+      btn.textContent = '\u00D7';
+      btn.title = 'Remove this image';
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const img = card.querySelector('img');
+        const label = img ? (img.getAttribute('alt') || img.getAttribute('src')) : 'this image';
+        if (!confirm('Remove "' + label + '" from the gallery?')) return;
+        const hidden = getHidden();
+        if (img) hidden.push(img.getAttribute('src'));
+        setHidden(hidden);
+        card.remove();
+      });
+      card.appendChild(btn);
+    });
+  }
+
+  function exit(){
+    active = false;
+    document.body.classList.remove('curating');
+    document.querySelectorAll('.del-btn').forEach(b => b.remove());
+    curateBtn.hidden = false;
+    curateBar.hidden = true;
+  }
+
+  curateBtn.addEventListener('click', enter);
+  document.getElementById('doneBtn').addEventListener('click', exit);
+  document.getElementById('restoreBtn').addEventListener('click', () => {
+    if (!confirm('Restore all hidden images?')) return;
+    setHidden([]);
+    location.reload();
+  });
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    const clone = document.documentElement.cloneNode(true);
+    clone.querySelectorAll('.del-btn').forEach(b => b.remove());
+    const bar = clone.querySelector('#curateBar'); if (bar) bar.setAttribute('hidden','');
+    const cb = clone.querySelector('#curateBtn'); if (cb) cb.removeAttribute('hidden');
+    clone.classList.remove('curating');
+    const blob = new Blob(['<!DOCTYPE html>\n' + clone.outerHTML], {type: 'text/html'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'index.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
+
+  applyHidden();
+})();
+</script>
+
+<style>
+.curate-btn{background:none;border:1px solid var(--muted);color:var(--muted);font-size:.75rem;padding:4px 14px;border-radius:20px;cursor:pointer;margin-top:12px}
+.curate-btn:hover{color:var(--gold);border-color:var(--gold)}
+.curate-bar button{background:#1a1a1a;border:1px solid var(--muted);color:#eee;font-size:.75rem;padding:4px 14px;border-radius:20px;cursor:pointer;margin:12px 4px 0}
+.curate-bar button:hover{border-color:var(--gold);color:var(--gold)}
+body.curating .card{position:relative}
+.del-btn{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(180,30,30,.92);color:#fff;font-size:18px;line-height:1;cursor:pointer;z-index:5}
+.del-btn:hover{background:rgba(220,40,40,1)}
+</style>
 
 <script>
 const STYLE = "STYLE: Photorealistic 3D character render at Unreal Engine 5 " +
